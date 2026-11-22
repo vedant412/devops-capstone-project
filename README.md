@@ -1,133 +1,42 @@
-# DevOps Capstone Template
+# Customer Accounts Microservice — DevOps Capstone
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python 3.9](https://img.shields.io/badge/Python-3.9-green.svg)](https://shields.io/)
+[![Accounts CI](https://github.com/vedant412/devops-capstone-project/actions/workflows/ci-build.yaml/badge.svg?branch=main)](https://github.com/vedant412/devops-capstone-project/actions/workflows/ci-build.yaml)
 
-This repository contains the starter code for the project in [**IBM-CD0285EN-SkillsNetwork DevOps Capstone Project**](https://www.coursera.org/learn/devops-capstone-project?specialization=devops-and-software-engineering) which is part of the [**IBM DevOps and Software Engineering Professional Certificate**](https://www.coursera.org/professional-certificates/devops-and-software-engineering)
+A Flask and SQLAlchemy REST service for managing customer accounts. This is the IBM DevOps and Software Engineering Capstone project. The API implements create, list, read, update, and delete. Flask-Talisman adds security headers, and Flask-CORS restricts cross-origin access to configured origins.
 
-## Usage
+## Run and test locally
 
-You should use this template to start your DevOps Capstone project. It contains all of the code that you will need to get started.
-
-Do Not fork this code! It is meant to be used by pressing the  <span style=color:white;background:green>**Use this Template**</span> button in GitHub. This will copy the code to your own repository with no connection back to the original repository like a fork would. This is what you want.
-
-## Development Environment
-
-These labs are designed to be executed in the IBM Developer Skills Network Cloud IDE with OpenShift. Please use the links provided in the Coursera Capstone project to access the lab environment.
-
-Once you are in the lab environment, you can initialize it with `bin/setup.sh` by sourcing it. (*Note: DO NOT run this program as a bash script. It sets environment variable and so must be sourced*):
-
-```bash
-source bin/setup.sh
+```sh
+python -m pip install -r requirements-dev.txt
+export DATABASE_URI=sqlite:///accounts.db
+flask --app service:app run --port 8080
 ```
 
-This will install Python 3.9, make it the default, modify the bash prompt, create a Python virtual environment and activate it.
+Use PowerShell's `$env:DATABASE_URI = 'sqlite:///accounts.db'` to set the same variable on Windows. Visit `http://127.0.0.1:8080/` for the service description and `/health` for readiness.
 
-After sourcing it you prompt should look like this:
-
-```bash
-(venv) theia:project$
+```sh
+flake8 service tests
+DATABASE_URI=sqlite:///:memory: nosetests tests.test_routes tests.test_models tests.test_cli_commands
 ```
 
-## Useful commands
+The test suite clears its database. Use a dedicated test database. The maintained `pynose` distribution provides the `nosetests` command on Python 3.12.
 
-Under normal circumstances you should not have to run these commands. They are performed automatically at setup but may be useful when things go wrong:
+## Account endpoints
 
-### Activate the Python 3.9 virtual environment
+| Method | Path | Result |
+| --- | --- | --- |
+| POST | `/accounts` | Create an account, 201 |
+| GET | `/accounts` | List accounts, 200 |
+| GET | `/accounts/{id}` | Read an account, 200 |
+| PUT | `/accounts/{id}` | Update an account, 200 |
+| DELETE | `/accounts/{id}` | Delete an account, 204 |
 
-You can activate the Python 3.9 environment with:
+Set `CORS_ALLOWED_ORIGINS` to a comma-separated list of trusted browser origins. In a TLS environment that forwards the original scheme, set `FORCE_HTTPS=true` to require HTTPS.
 
-```bash
-source ~/venv/bin/activate
-```
+## CI and deployment
 
-### Installing Python dependencies
+The GitHub Actions workflow checks out the source, installs dependencies, runs Flake8 and nosetests, builds the Docker image, and verifies the container on port 8080. The Docker image is intended to run with PostgreSQL configured either by `DATABASE_URI` or by the database environment variables shown in `deploy/deployment.yaml`.
 
-These dependencies are installed as part of the setup process but should you need to install them again, first make sure that the Python 3.9 virtual environment is activated and then use the `make install` command:
+In the IBM lab, provision the supplied PostgreSQL template and use the project-scoped registry. Apply the deployment and service manifests with the image tag built for that project. The Tekton files describe the continuous delivery sequence from checkout through deployment. They reference the lab-provided `git-clone` and `buildah` cluster tasks. On OpenShift versions that use installed namespaced tasks, configure their references with the cluster resolver. Use a new tag for each deployment and bind `pipeline-workspace` to `pipelinerun-pvc`.
 
-```bash
-make install
-```
-
-### Starting the Postgres Docker container
-
-The labs use Postgres running in a Docker container. If for some reason the service is not available you can start it with:
-
-```bash
-make db
-```
-
-You can use the `docker ps` command to make sure that postgres is up and running.
-
-## Project layout
-
-The code for the microservice is contained in the `service` package. All of the test are in the `tests` folder. The code follows the **Model-View-Controller** pattern with all of the database code and business logic in the model (`models.py`), and all of the RESTful routing on the controller (`routes.py`).
-
-```text
-├── service         <- microservice package
-│   ├── common/     <- common log and error handlers
-│   ├── config.py   <- Flask configuration object
-│   ├── models.py   <- code for the persistent model
-│   └── routes.py   <- code for the REST API routes
-├── setup.cfg       <- tools setup config
-└── tests                       <- folder for all of the tests
-    ├── factories.py            <- test factories
-    ├── test_cli_commands.py    <- CLI tests
-    ├── test_models.py          <- model unit tests
-    └── test_routes.py          <- route unit tests
-```
-
-## Data Model
-
-The Account model contains the following fields:
-
-| Name | Type | Optional |
-|------|------|----------|
-| id | Integer| False |
-| name | String(64) | False |
-| email | String(64) | False |
-| address | String(256) | False |
-| phone_number | String(32) | True |
-| date_joined | Date | False |
-
-## Your Task
-
-Complete this microservice by implementing REST API's for `READ`, `UPDATE`, `DELETE`, and `LIST` while maintaining **95%** code coverage. In true **Test Driven Development** fashion, first write tests for the code you "wish you had", and then write the code to make them pass.
-
-## Local Kubernetes Development
-
-This repo can also be used for local Kubernetes development. It is not advised that you run these commands in the Cloud IDE environment. The purpose of these commands are to simulate the Cloud IDE environment locally on your computer. 
-
-At a minimum, you will need [Docker Desktop](https://www.docker.com/products/docker-desktop) installed on your computer. For the full development environment, you will also need [Visual Studio Code](https://code.visualstudio.com) with the [Remote Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension from the Visual Studio Marketplace. All of these can be installed manually by clicking on the links above or you can use a package manager like **Homebrew** on Mac of **Chocolatey** on Windows.
-
-Please only use these commands for working stand-alone on your own computer with the VSCode Remote Container environment provided.
-
-1. Bring up a local K3D Kubernetes cluster
-
-    ```bash
-    $ make cluster
-    ```
-
-2. Install Tekton
-
-    ```bash
-    $ make tekton
-    ```
-
-3. Install the ClusterTasks that the Cloud IDE has
-
-    ```bash
-    $ make clustertasks
-    ```
-
-You can now perform Tekton development locally, just like in the Cloud IDE lab environment.
-
-## Author
-
-[John Rofrano](https://www.coursera.org/instructor/johnrofrano), Senior Technical Staff Member, DevOps Champion, @ IBM Research, and Instructor @ Coursera
-
-## License
-
-Licensed under the Apache License. See [LICENSE](LICENSE)
-
-## <h3 align="center"> © IBM Corporation 2022. All rights reserved. <h3/>
+Adapted from [IBM Skills Network's DevOps Capstone starter](https://github.com/ibm-developer-skills-network/aolwx-devops-capstone-template). See [LICENSE](LICENSE).

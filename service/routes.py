@@ -3,8 +3,7 @@ Account Service
 
 This microservice handles the lifecycle of Accounts
 """
-# pylint: disable=unused-import
-from flask import jsonify, request, make_response, abort, url_for   # noqa; F401
+from flask import abort, jsonify, make_response, request, url_for
 from service.models import Account
 from service.common import status  # HTTP Status Codes
 from . import app  # Import Flask application
@@ -29,7 +28,7 @@ def index():
         jsonify(
             name="Account REST API Service",
             version="1.0",
-            # paths=url_for("list_accounts", _external=True),
+            paths=url_for("list_accounts", _external=True),
         ),
         status.HTTP_200_OK,
     )
@@ -50,39 +49,54 @@ def create_accounts():
     account.deserialize(request.get_json())
     account.create()
     message = account.serialize()
-    # Uncomment once get_accounts has been implemented
-    # location_url = url_for("get_accounts", account_id=account.id, _external=True)
-    location_url = "/"  # Remove once get_accounts has been implemented
+    location_url = url_for("get_accounts", account_id=account.id, _external=True)
     return make_response(
         jsonify(message), status.HTTP_201_CREATED, {"Location": location_url}
     )
 
-######################################################################
-# LIST ALL ACCOUNTS
-######################################################################
 
-# ... place you code here to LIST accounts ...
-
-
-######################################################################
-# READ AN ACCOUNT
-######################################################################
-
-# ... place you code here to READ an account ...
+@app.route("/accounts", methods=["GET"])
+def list_accounts():
+    """Return all Accounts, optionally filtering by an exact name."""
+    name = request.args.get("name")
+    accounts = Account.find_by_name(name).all() if name else Account.all()
+    return jsonify([account.serialize() for account in accounts]), status.HTTP_200_OK
 
 
-######################################################################
-# UPDATE AN EXISTING ACCOUNT
-######################################################################
+@app.route("/accounts/<int:account_id>", methods=["GET"])
+def get_accounts(account_id):
+    """Return an Account by ID."""
+    return jsonify(find_account_or_404(account_id).serialize()), status.HTTP_200_OK
 
-# ... place you code here to UPDATE an account ...
+
+@app.route("/accounts/<int:account_id>", methods=["PUT"])
+def update_accounts(account_id):
+    """Replace the supplied Account fields for an existing ID."""
+    check_content_type("application/json")
+    account = find_account_or_404(account_id)
+    data = request.get_json()
+    if isinstance(data, dict):
+        data.setdefault("date_joined", account.date_joined.isoformat())
+    account.deserialize(data)
+    account.update()
+    return jsonify(account.serialize()), status.HTTP_200_OK
 
 
-######################################################################
-# DELETE AN ACCOUNT
-######################################################################
+@app.route("/accounts/<int:account_id>", methods=["DELETE"])
+def delete_accounts(account_id):
+    """Delete an Account if it is present."""
+    account = Account.find(account_id)
+    if account is not None:
+        account.delete()
+    return "", status.HTTP_204_NO_CONTENT
 
-# ... place you code here to DELETE an account ...
+
+def find_account_or_404(account_id):
+    """Find an Account or return 404."""
+    account = Account.find(account_id)
+    if account is None:
+        abort(status.HTTP_404_NOT_FOUND, f"Account {account_id} was not found")
+    return account
 
 
 ######################################################################
@@ -93,7 +107,7 @@ def create_accounts():
 def check_content_type(media_type):
     """Checks that the media type is correct"""
     content_type = request.headers.get("Content-Type")
-    if content_type and content_type == media_type:
+    if request.mimetype == media_type:
         return
     app.logger.error("Invalid Content-Type: %s", content_type)
     abort(

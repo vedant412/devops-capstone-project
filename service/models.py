@@ -73,7 +73,7 @@ class PersistentBase:
     def find(cls, by_id):
         """Finds a record by it's ID"""
         logger.info("Processing lookup for id %s ...", by_id)
-        return cls.query.get(by_id)
+        return db.session.get(cls, by_id)
 
 
 ######################################################################
@@ -92,7 +92,7 @@ class Account(db.Model, PersistentBase):
     email = db.Column(db.String(64))
     address = db.Column(db.String(256))
     phone_number = db.Column(db.String(32), nullable=True)  # phone number is optional
-    date_joined = db.Column(db.Date(), nullable=False, default=date.today())
+    date_joined = db.Column(db.Date(), nullable=False, default=date.today)
 
     def __repr__(self):
         return f"<Account {self.name} id=[{self.id}]>"
@@ -127,10 +127,12 @@ class Account(db.Model, PersistentBase):
                 self.date_joined = date.today()
         except KeyError as error:
             raise DataValidationError("Invalid Account: missing " + error.args[0]) from error
+        except ValueError as error:
+            raise DataValidationError("Invalid Account: date_joined must be an ISO date") from error
         except TypeError as error:
             raise DataValidationError(
                 "Invalid Account: body of request contained "
-                "bad or no data - " + error.args[0]
+                "bad or no data - " + str(error)
             ) from error
         return self
 
