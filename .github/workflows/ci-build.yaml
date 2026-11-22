@@ -35,9 +35,9 @@ jobs:
       - name: Build and list the accounts Docker image
         run: |
           docker build --tag accounts:1.0 .
-          docker image ls accounts:1.0
+          docker image ls --format 'table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedAt}}\t{{.Size}}' accounts:1.0
       - name: Verify container on port 8080
         run: |
           docker run --detach --name accounts-ci --publish 127.0.0.1:8080:8080 --env DATABASE_URI='sqlite:////tmp/accounts.db' accounts:1.0
           trap 'docker logs accounts-ci; docker rm -f accounts-ci' EXIT
-          curl --fail --silent --show-error --retry 12 --retry-connrefused --retry-delay 1 http://127.0.0.1:8080/health
+          curl --fail --silent --show-error --max-time 5 --retry 12 --retry-connrefused --retry-all-errors --retry-delay 1 http://127.0.0.1:8080/health
